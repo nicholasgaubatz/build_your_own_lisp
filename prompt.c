@@ -7,7 +7,7 @@ int main(int argc, char** argv) {
 
     /* Print version and exit information */
     puts("Lispy Version 0.0.0.0.1");
-    puts("Press Ctrl+c to exit\n");
+    puts("Press Ctrl+c to exit\n"); 
 
     while(1) {
         /* Output our prompt */
