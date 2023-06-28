@@ -1,3 +1,5 @@
+// Reference: https://buildyourownlisp.com/chapter4_interactive_prompt
+
 #include <stdio.h>
 #include <stdlib.h>
 

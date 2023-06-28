@@ -1,4 +1,4 @@
-// Reference: https://buildyourownlisp.com/chapter7_evaluation
+// Reference: https://buildyourownlisp.com/chapter8_error_handling
 
 #include "mpc.h"
 
@@ -22,52 +22,130 @@ void add_history(char* unused) {}
 #include <editline/history.h>
 #endif
 
+/* Create enumeration of possible error types */
+enum { LERR_DIV_ZERO, LERR_BAD_OP, LERR_BAD_NUM };
+
+/* Create enumeration of possible lval types */
+enum { LVAL_NUM, LVAL_ERR };
+
+/* Declare new lval struct */
+typedef struct {
+    int type;
+    long num;
+    int err;
+} lval;
+
+/* Create a new number type lval */
+lval lval_num(long x){
+    lval v;
+    v.type = LVAL_NUM;
+    v.num = x;
+    return v;
+}
+
+/* Create a new error type lval */
+lval lval_err(int x){
+    lval v;
+    v.type = LVAL_ERR;
+    v.err = x;
+    return v;
+}
+
+/* Print an "lval" */
+void lval_print(lval v){
+    switch(v.type){
+        /* If the type is a number, print it and then break out of switch */
+        case LVAL_NUM: printf("%li", v.num); break;
+
+        /* If the type is an error */
+        case LVAL_ERR:
+            /* Check the type of error and print it */
+            if(v.err==LERR_DIV_ZERO){
+                printf("Error: Division by Zero!");
+            }
+            if(v.err==LERR_BAD_OP){
+                printf("Error: Invalid Operator!");
+            }
+            if(v.err==LERR_BAD_NUM){
+                printf("Error: Invalid Number!");
+            }
+        break;
+    }
+}
+
+/* Print an "lval" followed by a newline */
+void lval_println(lval v){
+    lval_print(v);
+    putchar('\n'); // Interesting note: if instead we put "\n", we get "warning: passing argument 1 of 'putchar' makes integer from pointer without a cast"
+}
+
 /* Use operator string to see which operation to perform */
-long eval_op(long x, char* op, long y) {
+lval eval_op(lval x, char* op, lval y) {
+    /* If either x or y is an error, return it. */
+    if(x.type==LVAL_ERR){
+        return x;
+    }
+    if(y.type==LVAL_ERR){
+        return y;
+    }
+
+    /* Otherwise, continue as normal. */    
     if(strcmp(op, "+")==0 || strcmp(op, "add")==0) {
-        return x+y;
+        return lval_num(x.num+y.num);
     }
     if(strcmp(op, "-")==0 || strcmp(op, "sub")==0) {
-        return x-y;
+        return lval_num(x.num-y.num);
     }
     if(strcmp(op, "*")==0 || strcmp(op, "mul")==0) {
-        return x*y;
+        return lval_num(x.num*y.num);
     }
     if(strcmp(op, "/")==0 || strcmp(op, "div")==0) {
-        return x/y;
+        /* If second operand is zero return error */
+        return y.num==0
+            ? lval_err(LERR_DIV_ZERO)
+            : lval_num(x.num/y.num);
     }
     if(strcmp(op, "\%")==0) {
-        return x%y;
+        return lval_num(x.num%y.num);
     }
     if(strcmp(op, "^")==0) { // Computes powers using recursion
-        if(y==0){
-            return 1;
+        if(y.num==0){
+            return lval_num(1);
         }
         else{
-            return x * eval_op(x, "^", y-1);
+            return lval_num(x.num * eval_op(lval_num(x.num), "^", lval_num(y.num-1)).num);
         }
     }
     if(strcmp(op, "min")==0) {
-        return x*(x<=y) + y*(x>y); // A fun little way to get the minimum of two numbers :)
+        int v = x.num;
+        int w = y.num;
+        return lval_num(v*(v<=w) + w*(v>w)); // A fun little way to get the minimum of two numbers :)
     }
     if(strcmp(op, "max")==0) {
-        return x*(x>=y) + y*(x<y);
+        int v = x.num;
+        int w = y.num;
+        return lval_num(v*(v>=w) + w*(v<w));
     }
 
-    return 0;
+    return lval_err(LERR_BAD_OP);
 }
 
-long eval(mpc_ast_t* t) {
+lval eval(mpc_ast_t* t) {
     /* If tagged as number return it directly */
     if(strstr(t->tag, "number")){
-        return atoi(t->contents);
+        /* Check if there is some error in conversion. */
+        errno = 0;
+        long x = strtol(t->contents, NULL, 10); // Converts string to long: long int strtol(const char *str, char **endptr, int base)
+        return errno != ERANGE
+            ? lval_num(x)
+            : lval_err(LERR_BAD_NUM);
     }
 
     /* The operator is always the second child */
     char* op = t->children[1]->contents;
 
     /* Store the third child in 'x' */
-    long x = eval(t->children[2]);
+    lval x = eval(t->children[2]);
 
     /* Iterate the remaining children and combine */
     int i = 3;
@@ -78,7 +156,7 @@ long eval(mpc_ast_t* t) {
 
     /* If the minus operator receives one argument, it negates it. Not sure if this is the best way to do this. */
     if(strcmp(op, "-")==0 && i==3){
-        return -1*x;
+        return lval_num(-1*x.num);
     }
     else{
         return x;
@@ -115,8 +193,8 @@ int main(int argc, char** argv) {
     mpc_result_t r;
     if (mpc_parse("<stdin>", input, Lispy, &r)) {
       /* On success print and delete the AST */
-      long result = eval(r.output);
-      printf("%li\n", result);
+      lval result = eval(r.output);
+      lval_println(result);
       mpc_ast_delete(r.output);
     } else {
       /* Otherwise print and delete the Error */

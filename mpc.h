@@ -1,3 +1,5 @@
+// Source: https://github.com/orangeduck/mpc/tree/master
+
 /*
 ** mpc - Micro Parser Combinator library for C
 **
