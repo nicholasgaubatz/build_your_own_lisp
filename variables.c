@@ -1,4 +1,4 @@
-// Reference: https://buildyourownlisp.com/chapter9_s_expressions
+// Reference: https://buildyourownlisp.com/chapter11_variables
 
 #include "mpc.h"
 
