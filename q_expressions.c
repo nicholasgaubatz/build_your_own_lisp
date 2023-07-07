@@ -270,12 +270,30 @@ lval* builtin_op(lval* a, char* op){
 #define LASSERT(args, cond, err) \
     if (!(cond)) { lval_del(args); return lval_err(err); }
 
+/* Macro for testing for the incorrect number of arguments */
+#define INCARGS(args, num, func) \
+    if (args->count != num) { \
+        lval_del(args); \
+        char str[1024]; \
+        sprintf(str, "Function '%s' passed incorrect number of arguments!", func); \
+        return lval_err(str); \
+    }
+
+/* Macro for testing for being called with the empty list */
+#define EMPLST(args, func) \
+    if (args->cell[0]->count == 0) { \
+        lval_del(args); \
+        char str[1024]; \
+        sprintf(str, "Function '%s' passed {}!", func); \
+        return lval_err(str); \
+    }
+
 /* Takes a Q-Expression and returns a Q-Expression with only the first element */
 lval* builtin_head(lval* a){
     /* Check error conditions */
-    LASSERT(a, a->count == 1, "Function 'head' passed too many arguments!");
+    INCARGS(a, 1, "head");
     LASSERT(a, a->cell[0]->type == LVAL_QEXPR, "Function 'head' passed incorrect types!");
-    LASSERT(a, a->cell[0]->count != 0, "Function 'head' passed {}!");
+    EMPLST(a, "head");
 
     /* Otherwise take first argument */
     lval* v = lval_take(a, 0);
@@ -291,9 +309,9 @@ lval* builtin_head(lval* a){
 /* Takes a Q-Expression and returns a Q-Expression with the first element removed */
 lval* builtin_tail(lval* a){
     /* Check error conditions */
-    LASSERT(a, a->count == 1, "Function 'tail' passed too many arguments!");
+    INCARGS(a, 1, "tail");
     LASSERT(a, a->cell[0]->type == LVAL_QEXPR, "Function 'tail' passed incorrect types!");
-    LASSERT(a, a->cell[0]->count != 0, "Function 'tail' passed {}!");
+    EMPLST(a, "tail");
 
     /* Otherwise take all but first argument */
     lval* v = lval_take(a, 0);
@@ -312,7 +330,7 @@ lval* lval_eval(lval* v);
 
 /* Takes a Q-Expression and evaluates it as if it were a S-Expression */
 lval* builtin_eval(lval* a){
-    LASSERT(a, a->count == 1, "Function 'eval' passed too many arguments!");
+    INCARGS(a, 1, "eval");
     LASSERT(a, a->cell[0]->type == LVAL_QEXPR, "Function 'eval' passed incorrect type!");
     
     lval* x = lval_take(a, 0);
@@ -354,7 +372,7 @@ lval* builtin_join(lval* a){
 /* Takes a value and a Q-Expression and appends it to the front */
 lval* builtin_cons(lval* a){
     /* Ensure the first argument is a number or symbol and the second argument is a Q-expressions */
-    LASSERT(a, a->count == 2, "Function 'cons' passed too few or many arguments!");
+    INCARGS(a, 2, "cons");
     LASSERT(a, a->cell[0]->type==LVAL_NUM || a->cell[0]->type==LVAL_SYM, "Function 'cons' passed incorrect type!");
     LASSERT(a, a->cell[1]->type == LVAL_QEXPR, "Function 'cons' passed incorrect type!")
 
@@ -367,7 +385,7 @@ lval* builtin_cons(lval* a){
 /* Returns the number of elements in a Q-Expression */
 lval* builtin_len(lval* a){
     /* Ensure the one and only argument is a Q-Expression */
-    LASSERT(a, a->count == 1, "Function 'len' passed too many arguments!");
+    INCARGS(a, 1, "len");
     LASSERT(a, a->cell[0]->type == LVAL_QEXPR, "Function 'len' passed incorrect type!");
 
     lval* n = lval_num(0);
@@ -385,9 +403,9 @@ lval* builtin_len(lval* a){
 /* Returns all of a Q-Expression except the final element */
 lval* builtin_init(lval* a){
     /* Check error conditions */
-    LASSERT(a, a->count == 1, "Function 'init' passed too many arguments!");
+    INCARGS(a, 1, "init");
     LASSERT(a, a->cell[0]->type == LVAL_QEXPR, "Function 'init' passed incorrect types!");
-    LASSERT(a, a->cell[0]->count != 0, "Function 'init' passed {}!");
+    EMPLST(a, "head");
 
     /* Otherwise take all but last argument */
     lval* v = lval_take(a, 0);
